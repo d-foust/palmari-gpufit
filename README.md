@@ -8,6 +8,8 @@
 
 A processing pipeline for PALM movies analysis (pre-processing, localization, drift correction, tracking).
 
+Adding a localization processing step that utilizes gpufit (https://gpufit.readthedocs.io/en/latest/).
+
 Check out the [documentation] to get started.
 
 ![napari_plugin](https://github.com/hippover/palmari/raw/main/docs/images/plugin_steps.png "Fine-tune your pipelines on a movie, run it on a batch easily !")
