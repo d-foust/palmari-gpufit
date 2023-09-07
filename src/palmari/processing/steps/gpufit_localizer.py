@@ -10,7 +10,6 @@ class GpufitLocalizer(SubpixelLocalizer):
 
     widget_options = {'tolerance': 'FloatSpinBox',
                       'max_iterations': 'SpinBox',
-                    #   'parameters_to_fit': 'ComboBox',
                       'estimator': 'ComboBox'}
     
     widget_options = {
@@ -45,15 +44,14 @@ class GpufitLocalizer(SubpixelLocalizer):
         self.max_iterations = max_iterations
         # self.parameters_to_fit = np.ones(5, dtype=np.int32)
         self.estimator = estimator
-        self._process_data = {'particle_data': np.array([]).reshape(0,0)}
 
     @property
     def name(self):
         return "Gpufit localizer"
 
-    def movie_localization(self, mov: np.ndarray, detections: pd.DataFrame):
+    def movie_localization(self, mov: np.ndarray, detections: pd.DataFrame, mov_dict: dict):
 
-        return fit_particle_data(particle_data=self._process_data['particle_data'],
+        return fit_particle_data(particle_data=mov_dict['particle_data'],
                                  detections=detections,
                                  model_id=gf.ModelID.GAUSS_2D,
                                  tolerance=self.tolerance,

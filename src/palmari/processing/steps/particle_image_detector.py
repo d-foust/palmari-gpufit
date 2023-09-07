@@ -89,23 +89,24 @@ class PIDetector(Detector):
                 if start >= end:
                     continue
                 positions_pis_delayed.append(delayed(self.detect)(img=mov[start:end], 
-                                                                  frame_start=start))
+                                                                  frame_start=start)) # delayed list of tuples
 
             with ProgressBar():
                 # with warnings.catch_warnings():
                 # warnings.simplefilter("ignore", category="RuntimeWarning")
-                positions_pis = dask.compute(*positions_pis_delayed)
+                positions_pis = dask.compute(*positions_pis_delayed) # list of tuples no longer delayed
 
-            positions_dfs = [data[0] for data in positions_pis]
+            # split tuples into separate lists
+            positions_dfs = [data[0] for data in positions_pis] 
             particle_images = [data[1] for data in positions_pis]
 
+            # individual chunks concatenated
             loc_results = pd.concat(positions_dfs)
-            particle_images = np.concatenate(particle_images, axis=0, dtype=np.float32)
+            particle_images = np.concatenate(particle_images, axis=0, dtype=np.float32) # float32 necessary for gpufit
 
             loc_results.set_index(np.arange(loc_results.shape[0]), inplace=True)
             loc_results["detection_index"] = np.arange(loc_results.shape[0])
 
-            print('PID particle images: ', particle_images)
             mov_dict['particle_data'] = particle_images
     
         return loc_results

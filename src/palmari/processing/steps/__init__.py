@@ -11,4 +11,6 @@ from .quot_localizer import (
 )
 from .quot_tracker import EuclideanTracker, DiffusionTracker
 
+from .gpufit_localizer import GpufitLocalizer
 from .particle_image_detector import PIDetector
+
