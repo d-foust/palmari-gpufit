@@ -65,32 +65,6 @@ class ProcessingStep(ABC):
         # To be overriden in detectors
         return False
 
-
-class Tracker(ProcessingStep):
-    @abstractmethod
-    def track(self, locs: pd.DataFrame) -> pd.DataFrame:
-        locs["n"] = np.arange(locs.shape[0])
-        return locs
-
-    @property
-    def name(self):
-        return "Tracker"
-
-    @property
-    def action_name(self):
-        return "Track"
-
-    def process(self, *args):
-        return self.track(*args)
-
-    def estimate_delta_t(self, locs):
-        delta_t = (locs["t"].max() - locs["t"].min()) / (
-            locs["frame"].max() - locs["frame"].min()
-        )
-        logging.info("Tracker %s estimated delta_t = %.3f" % (self, delta_t))
-        return delta_t
-
-
 class MoviePreProcessor(ProcessingStep):
     @abstractmethod
     def preprocess(self, mov: da.Array) -> pd.DataFrame:
@@ -318,3 +292,27 @@ class LocProcessor(ProcessingStep):
 
     def process(self, *args):
         return self.process(*args)
+
+class Tracker(ProcessingStep):
+    @abstractmethod
+    def track(self, locs: pd.DataFrame) -> pd.DataFrame:
+        locs["n"] = np.arange(locs.shape[0])
+        return locs
+
+    @property
+    def name(self):
+        return "Tracker"
+
+    @property
+    def action_name(self):
+        return "Track"
+
+    def process(self, *args):
+        return self.track(*args)
+
+    def estimate_delta_t(self, locs):
+        delta_t = (locs["t"].max() - locs["t"].min()) / (
+            locs["frame"].max() - locs["frame"].min()
+        )
+        logging.info("Tracker %s estimated delta_t = %.3f" % (self, delta_t))
+        return delta_t

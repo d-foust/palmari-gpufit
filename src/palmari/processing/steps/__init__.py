@@ -10,3 +10,5 @@ from .quot_localizer import (
     RadialLocalizer,
 )
 from .quot_tracker import EuclideanTracker, DiffusionTracker
+
+from .particle_image_detector import PIDetector

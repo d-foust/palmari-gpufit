@@ -264,20 +264,27 @@ class ImagePipeline:
         desc += "\t %s\n" % self.tracker
         return desc
 
-    def movie_preprocessing(self, mov: da.Array) -> da.Array:
+    def movie_preprocessing(self, mov: da.Array, mov_dict: dict = None) -> da.Array:
+        """
+        Parameters
+        ----------
+        mov : da.Array
+        mov_dict : dict
+            For storing additional data associated with mov.
+        """
         for i, processor in enumerate(self.movie_preprocessors):
             logging.info(
                 "Preprocessing step %d / %d : %s"
                 % (i, len(self.movie_preprocessors), processor.name)
             )
-            mov = processor.preprocess(mov)
+            mov = processor.preprocess(mov, mov_dict=mov_dict)
         return mov
 
     def movie_localization(
-        self, mov: da.Array, DT: float, pixel_size: float
+        self, mov: da.Array, DT: float, pixel_size: float, mov_dict: dict = None
     ) -> pd.DataFrame:
-        detections = self.detector.movie_detection(mov)
-        locs = self.localizer.movie_localization(mov, detections)
+        detections = self.detector.movie_detection(mov, mov_dict=mov_dict)
+        locs = self.localizer.movie_localization(mov, detections, mov_dict=mov_dict)
         locs[["x", "y"]] *= pixel_size
         locs["t"] = locs["frame"] * DT
         return locs
@@ -287,17 +294,18 @@ class ImagePipeline:
         mov: da.Array,  # Movie
         locs: pd.DataFrame,  # Previous localizations, with x and y in micrometers
         pixel_size: float = 1.0,  # Pixel size in micrometers
+        mov_dict: dict = None
     ) -> pd.DataFrame:
         for i, locproc in enumerate(self.loc_processors):
             logging.info(
                 "Processing locs, step %d / %d : %s"
                 % (i, len(self.loc_processors), locproc.name)
             )
-            locs = locproc.process(mov, locs, pixel_size=pixel_size)
+            locs = locproc.process(mov, locs, pixel_size=pixel_size, mov_dict=mov_dict)
         return locs
 
-    def tracking(self, locs: pd.DataFrame) -> pd.DataFrame:
-        return self.tracker.track(locs)
+    def tracking(self, locs: pd.DataFrame, mov_dict: dict = None) -> pd.DataFrame:
+        return self.tracker.track(locs, mov_dict=mov_dict)
 
     def _process(
         self,
@@ -312,17 +320,19 @@ class ImagePipeline:
                 "Can't skip tracking after fresh localization. Overriding to skip_tracking = False"
             )
         original_mov = acq.image.astype(float)
+        mov_dict = {} # for storing additional data relevant to mov
+
         if not skip_loc:
-            mov = self.movie_preprocessing(original_mov)
+            mov = self.movie_preprocessing(original_mov, mov_dict=mov_dict)
             locs = self.movie_localization(
-                mov, DT=acq.experiment.DT, pixel_size=acq.experiment.pixel_size
+                mov, DT=acq.experiment.DT, pixel_size=acq.experiment.pixel_size, mov_dict=mov_dict
             )
             acq.raw_locs = locs.copy()
             self.mark_as_localized(acq)
         if not skip_tracking:
             acq.experiment.pixel_size
-            locs = self.loc_processing(original_mov, acq.raw_locs.copy())
-            acq.locs = self.tracking(locs)
+            locs = self.loc_processing(original_mov, acq.raw_locs.copy(), mov_dict=mov_dict)
+            acq.locs = self.tracking(locs, mov_dict=mov_dict)
             self.mark_as_tracked(acq)
 
     def process(
