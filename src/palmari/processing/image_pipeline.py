@@ -277,14 +277,18 @@ class ImagePipeline:
                 "Preprocessing step %d / %d : %s"
                 % (i, len(self.movie_preprocessors), processor.name)
             )
-            mov = processor.preprocess(mov, mov_dict=mov_dict)
+            processor._mov_dict = mov_dict
+            mov = processor.preprocess(mov)
         return mov
 
     def movie_localization(
         self, mov: da.Array, DT: float, pixel_size: float, mov_dict: dict = None
     ) -> pd.DataFrame:
-        detections = self.detector.movie_detection(mov, mov_dict=mov_dict)
-        locs = self.localizer.movie_localization(mov, detections, mov_dict=mov_dict)
+        self.detector._mov_dict = mov_dict
+        detections = self.detector.movie_detection(mov)
+
+        self.localizer._mov_dict = mov_dict
+        locs = self.localizer.movie_localization(mov, detections)
         locs[["x", "y"]] *= pixel_size
         locs["t"] = locs["frame"] * DT
         return locs
@@ -301,11 +305,13 @@ class ImagePipeline:
                 "Processing locs, step %d / %d : %s"
                 % (i, len(self.loc_processors), locproc.name)
             )
-            locs = locproc.process(mov, locs, pixel_size=pixel_size, mov_dict=mov_dict)
+            locproc._mov_dict = mov_dict
+            locs = locproc.process(mov, locs, pixel_size=pixel_size)
         return locs
 
     def tracking(self, locs: pd.DataFrame, mov_dict: dict = None) -> pd.DataFrame:
-        return self.tracker.track(locs, mov_dict=mov_dict)
+        self.tracker._mov_dict = mov_dict
+        return self.tracker.track(locs)
 
     def _process(
         self,
@@ -320,7 +326,7 @@ class ImagePipeline:
                 "Can't skip tracking after fresh localization. Overriding to skip_tracking = False"
             )
         original_mov = acq.image.astype(float)
-        mov_dict = {} # for storing additional data relevant to mov
+        mov_dict = {} # for temporary  additional data relevant to mov
 
         if not skip_loc:
             mov = self.movie_preprocessing(original_mov, mov_dict=mov_dict)

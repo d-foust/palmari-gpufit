@@ -20,14 +20,15 @@ class WindowPercentileFilter(MoviePreProcessor):
         },
     }
 
-    def __init__(self, percentile: float = 3.0, window_size: int = 100):
+    def __init__(self, percentile: float = 3.0, window_size: int = 100, clip: bool = True):
         self.percentile = percentile
         self.window_size = window_size
+        self.clip = clip
 
     def preprocess(self, mov: da.Array) -> da.Array:
 
         return sliding_window_filter(
-            data=mov, percentile=self.percentile, window_size=self.window_size
+            data=mov, percentile=self.percentile, window_size=self.window_size, clip=self.clip
         )
 
     @property

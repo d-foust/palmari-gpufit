@@ -69,14 +69,20 @@ class PIDetector(Detector):
         },
     }
 
-    def movie_detection(self, mov: da.Array, mov_dict: dict = {}):
+    def movie_detection(self, mov: da.Array):
+
+        if hasattr(self, '_mov_dict'):
+            mov_dict = self._mov_dict
+        else:
+            mov_dict = {}
+            self._mov_dict = mov_dict
     
-        if isinstance(mov, np.ndarray):
-            loc_results = self.detect(mov, frame_start=0)
+        # check if movie is already calculated (not lazy)
+        if isinstance(mov, np.ndarray): # if numpy array, don't treat like dask
+            loc_results, particle_images = self.detect(mov, frame_start=0)
             
         if 'mov_np' in mov_dict: # if numpy array already in memory, don't compute from dask
-            mov = mov_dict['mov_np']
-            loc_results = self.detect(mov, frame_start=0)
+            loc_results, particle_images = self.detect(mov_dict['mov_np'], frame_start=0)
         
         elif isinstance(mov, da.Array):
             slice_size = mov.chunksize[0]
@@ -107,7 +113,8 @@ class PIDetector(Detector):
             loc_results.set_index(np.arange(loc_results.shape[0]), inplace=True)
             loc_results["detection_index"] = np.arange(loc_results.shape[0])
 
-            mov_dict['particle_data'] = particle_images
+        mov_dict['particle_data'] = particle_images # save individual particle images for future
+        # print('end pid particle_data:', self._mov_dict['particle_data'])
     
         return loc_results
 
@@ -145,10 +152,11 @@ class PIDetector(Detector):
 
 def detect(img, t, k, w, pi_size):
     """
+    For laplacian of gaussian detection.
     """
     positions = log(img, k=k, w=w, t=t, return_filt=False) # return row, col (y, x)
 
-    if len(positions.shape) == 2:
+    if len(positions.shape) == 2: # at least one particle detected
         hw = pi_size // 2 # half-window
         hwr = pi_size % 2 # half-window remainder
 

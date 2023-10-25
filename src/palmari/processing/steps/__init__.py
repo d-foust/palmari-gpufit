@@ -13,4 +13,7 @@ from .quot_tracker import EuclideanTracker, DiffusionTracker
 
 from .gpufit_localizer import GpufitLocalizer
 from .particle_image_detector import PIDetector
+from .godinez_rohr_detector import GodinezRohr
+
+from .window_percentile_np import WindowPercentileFilterNP
 

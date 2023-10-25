@@ -49,18 +49,34 @@ class GpufitLocalizer(SubpixelLocalizer):
     def name(self):
         return "Gpufit localizer"
 
-    def movie_localization(self, mov: np.ndarray, detections: pd.DataFrame, mov_dict: dict):
+    def movie_localization(self, mov: np.ndarray, detections: pd.DataFrame):
 
-        return fit_particle_data(particle_data=mov_dict['particle_data'],
-                                 detections=detections,
-                                 model_id=gf.ModelID.GAUSS_2D,
-                                 tolerance=self.tolerance,
-                                 max_number_iterations=self.max_iterations,
-                                 parameters_to_fit=np.ones(5, dtype=np.int32), # may want to make this a user option in the future
-                                 estimator_id=self.estimator)
+        if not hasattr(self, '_mov_dict'):
+            self._mov_dict = {}
+            print('mov_dict not found. Empty mov_dict created.')
+        else:
+            print('mov_dict found.')
+            print(self._mov_dict.keys())
+        mov_dict = self._mov_dict
+
+        if 'particle_data' in mov_dict: # need particle data to use this localizer, add flexibility in future
+            print('found particle_data')
+            print(mov_dict['particle_data'].shape)
+            localizations = fit_particle_data(particle_data=mov_dict['particle_data'],
+                                              detections=detections,
+                                              model_id=gf.ModelID.GAUSS_2D,
+                                              tolerance=self.tolerance,
+                                              max_number_iterations=self.max_iterations,
+                                              parameters_to_fit=np.ones(5, dtype=np.int32),
+                                              estimator_id=self.estimator)
+        else: 
+            print("didn't find particle data")
+            localizations = detections
+        
+        return localizations
     
     # need this function because abstract class in base, but doesn't actually do anything
-    def localize_frame(self, img: np.array, detections: np.array) -> pd.DataFrame:
+    def localize_frame(self, img: np.ndarray, detections: np.ndarray) -> pd.DataFrame:
         pass
     
 def fit_particle_data(particle_data, # 2d array, n particles x n pixels
@@ -112,11 +128,14 @@ def fit_particle_data(particle_data, # 2d array, n particles x n pixels
 
     origin_offset = window_size // 2 # Gpufit first value of window corresponds to (0,0)
 
-    detections['amp'] = fitpars[:,0]
     detections['y_detect'] = detections['y']
     detections['x_detect'] = detections['x']
+
+    detections['amp'] = fitpars[:,0]
     detections['x'] = fitpars[:,1] + detections['x_detect'] - origin_offset
     detections['y'] = fitpars[:,2] + detections['y_detect'] - origin_offset
+    detections['sigma'] = fitpars[:,3]
+    detections['offset'] = fitpars[:,4]
 
     detections['fit_state'] = states
     detections['chi_squares'] = chi_squares

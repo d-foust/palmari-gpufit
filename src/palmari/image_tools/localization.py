@@ -154,12 +154,17 @@ def b_splines(x, scale, order):
 
 
 def sliding_window_filter(
-    data: da.Array, percentile: float = 10, window_size: int = 100
+    data: da.Array, percentile: float = 10, window_size: int = 100, clip: bool = True
 ):
     percent = percentile_filter(
         data, percentile=percentile, size=(window_size, 1, 1), mode="reflect"
     )
-    clipped = (data - percent).clip(0.0)
+
+    if clip == True:
+        clipped = (data - percent).clip(0.0)
+    else:
+        clipped = data - percent
+
     return clipped
 
 

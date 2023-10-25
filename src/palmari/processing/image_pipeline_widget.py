@@ -84,8 +84,8 @@ class ImagePipelineWidget(QWidget):
     ):
         super().__init__()
 
-        self.pixel_size = 1.00
-        self.delta_t = 0.03
+        self.pixel_size = 1
+        self.delta_t = 0.04
         self.to_export = None
         self.viewer = napari_viewer
         self.tp = image_pipeline
@@ -123,11 +123,13 @@ class ImagePipelineWidget(QWidget):
             # Store it
             logging.debug("Set Input Image %s" % layer.name)
             layer.data = layer.data.astype(float)
-            if not isinstance(layer.data, da.Array):
+            if not isinstance(layer.data, da.Array): # seems suboptimal because has to be converted to numpy array eventually anyways, so might as well use in memory copy
+
                 layer.data = da.from_array(layer.data)
 
             self._layers[0] = layer
             self.rescale_image_layers()
+            self.mov_dict = {'pixel_size': self.pixel_size, 'delta_t': self.delta_t}
 
     def rescale_image_layers(self):
         rescaled = False
@@ -468,14 +470,17 @@ class ImagePipelineWidget(QWidget):
             logging.debug(
                 "Adding layer %d -> %s" % (input_layer_idx, output_layer_idx)
             )
+            if hasattr(step, "show"): # hook for displaying intermediate results, processor needs method show
+                step.show(self.viewer)
+
             if step.is_localizer:
                 data["t"] = (
                     data["frame"] - data["frame"].min()
                 ) * self.delta_t
                 data[["x", "y"]] *= self.pixel_size
 
-            if step.is_detector:
-                data[["x", "y"]] = data[["y", "x"]]
+            # if step.is_detector:
+            #     data[["x", "y"]] = data[["y", "x"]]=
 
             self.drop_layers_after(output_layer_idx)
             if data.shape[0] > 0:
@@ -531,6 +536,13 @@ class ImagePipelineWidget(QWidget):
                     self._layers[input_layer_idx].result,
                     self.pixel_size,
                 )
+            if hasattr(self, 'mov_dict'):
+                step._mov_dict = self.mov_dict
+            else:
+                step._mov_dict = {'pixel_size': self.pixel_size,
+                                  'delta_t': self.delta_t}
+                self.mov_dict = step._mov_dict
+
             return step.process(*input_data)
 
         step_run_btn.clicked.connect(run_step)
@@ -595,14 +607,18 @@ class ImagePipelineWidget(QWidget):
                         and (points_[c].dtype.kind in "uifb")
                     ]
                 ].to_dict(orient="list")
+            if "color" not in properties: # add hook for attaching color to some value
+                properties["color"] = properties["frame"]
             new_layer = self.viewer.add_points(
-                points_[["frame", "x", "y"]].values,
+                points_[["frame", "y", "x"]].values,
                 properties=properties,
                 symbol="disc",
-                size=0.25,
-                edge_width=0.1,
+                # size=0.25,
+                size=self.pixel_size*8,
+                # edge_width=0.1,
+                edge_width=self.pixel_size*0.5,
                 face_color="transparent" if (points.shape[0] > 0) else None,
-                edge_color="frame" if (points.shape[0] > 0) else None,
+                edge_color="color" if (points.shape[0] > 0) else None,
                 edge_colormap="rainbow",
                 blending="translucent_no_depth",
                 name="%s : %s" % (self._layers[0].name, step_name),
@@ -618,7 +634,7 @@ class ImagePipelineWidget(QWidget):
 
         if layer_idx not in self._layers:
             new_layer = self.viewer.add_tracks(
-                data=tracks[["n", "frame", "x", "y"]],
+                data=tracks[["n", "frame", "y", "x"]],
                 tail_width=1,
                 tail_length=10,
                 head_length=0,
