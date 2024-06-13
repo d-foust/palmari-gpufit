@@ -170,7 +170,12 @@ def log_detection(mov,
         if show_mask == True:
             mov_foreground_mask[fr] = foreground_mask
         
-        frame_detections, particles = guess_from_mask(foreground_mask, image_frame, min_spot_size, max_spot_size, eccentricity, pi_size)
+        frame_detections, particles = guess_from_mask(foreground_mask, 
+                                                      image_frame, 
+                                                      min_spot_size, 
+                                                      max_spot_size, 
+                                                      eccentricity, 
+                                                      pi_size)
         
         if frame_detections.shape[0] > 0:
             frame_detections['frame'] = fr

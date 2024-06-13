@@ -92,7 +92,7 @@ class Detector(ProcessingStep):
         """Detect spots from a temporal slice of an image. Override in subclasses
 
         Args:
-            img (np.array): 3D array [T, X, Y]
+            img (np.array): 3D array [T, Y, X]
 
         Returns:
             pd.DataFrame: localizations table with the following columns : x, y, frame

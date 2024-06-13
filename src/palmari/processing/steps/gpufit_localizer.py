@@ -101,7 +101,7 @@ def fit_particle_data(particle_data, # 2d array, n particles x n pixels
 
     initial_parameters = np.zeros([n_particles, 5], dtype=np.float32) # amp, x0, y0, sigma, offset
 
-    amp_init, sigma_init, offset_init = calc_initial_parameters(particle_data)
+    amp_init, sigma_init, offset_init, noise_est = calc_initial_parameters(particle_data)
     initial_parameters[:,0] = amp_init
     initial_parameters[:,3] = sigma_init
     initial_parameters[:,4] = offset_init
@@ -142,6 +142,11 @@ def fit_particle_data(particle_data, # 2d array, n particles x n pixels
     detections['number_iterations'] = number_iterations
     detections['execution_time'] = execution_time
 
+    detections['amp_init'] = amp_init
+    detections['sigma_init'] = sigma_init
+    detections['offset_init'] = offset_init
+    detections['noise_est'] = noise_est
+
     return detections
 
 def calc_initial_parameters(particle_data):
@@ -163,6 +168,27 @@ def calc_initial_parameters(particle_data):
 
     M = (particle_data > threshold[:,None]).sum(axis=1)
 
-    sigma = np.sqrt(M / np.pi) 
+    sigma = np.sqrt(M / np.pi)
 
-    return amp, sigma, offset
+    noise_est = calc_noise_estimate(particle_images)
+
+    return amp, sigma, offset, noise_est
+
+def calc_noise_estimate(particle_images):
+
+    top_row = particle_images[:,0,:]
+    bottom_row = particle_images[:,-1,:]
+    left_col = particle_images[:,0,1:-1]
+    right_col = particle_images[:,-1,1:-1]
+
+    border_elements = np.concatenate([
+        top_row,
+        bottom_row,
+        left_col,
+        right_col
+    ],
+    axis=1)
+
+    noise = np.std(border_elements, axis=1)
+
+    return noise
