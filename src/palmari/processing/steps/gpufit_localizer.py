@@ -88,7 +88,7 @@ def fit_particle_data(particle_data, # 2d array, n particles x n pixels
                       parameters_to_fit=np.ones(5, dtype=np.int32),
                       estimator_id=gf.EstimatorID.LSE):
     """
-
+    
     """
     if particle_data.dtype != np.float32:
         particle_data = particle_data.astype(np.float32)
@@ -101,7 +101,7 @@ def fit_particle_data(particle_data, # 2d array, n particles x n pixels
 
     initial_parameters = np.zeros([n_particles, 5], dtype=np.float32) # amp, x0, y0, sigma, offset
 
-    amp_init, sigma_init, offset_init, noise_est = calc_initial_parameters(particle_data)
+    amp_init, sigma_init, offset_init, intensity_total, bgd_mean, noise_est = calc_initial_parameters(particle_data)
     initial_parameters[:,0] = amp_init
     initial_parameters[:,3] = sigma_init
     initial_parameters[:,4] = offset_init
@@ -145,6 +145,8 @@ def fit_particle_data(particle_data, # 2d array, n particles x n pixels
     detections['amp_init'] = amp_init
     detections['sigma_init'] = sigma_init
     detections['offset_init'] = offset_init
+    detections['I_tot'] = intensity_total # intensities summed minus border_mean
+    detections['border_mean'] = bgd_mean
     detections['noise_est'] = noise_est
 
     return detections
@@ -170,9 +172,12 @@ def calc_initial_parameters(particle_data):
 
     sigma = np.sqrt(M / np.pi)
 
-    noise_est = calc_noise_estimate(particle_images)
+    noise_est, bgd_mean = calc_noise_estimate(particle_images)
 
-    return amp, sigma, offset, noise_est
+    intensity_total = particle_images.sum(axis=(1,2))
+    intensity_total = intensity_total - bgd_mean*n_pixels
+
+    return amp, sigma, offset, intensity_total, bgd_mean, noise_est
 
 def calc_noise_estimate(particle_images):
 
@@ -190,5 +195,6 @@ def calc_noise_estimate(particle_images):
     axis=1)
 
     noise = np.std(border_elements, axis=1)
+    bgd_mean = np.mean(border_elements, axis=1)
 
-    return noise
+    return noise, bgd_mean
